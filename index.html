@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<title>GetBase - Aspirateur de la base de données des médicaments de la DPM</title>
+</head>
+<body>
+
+<input type="text" disabled id="num" size="80" value="--------"/><br/>
+<input type="text" disabled id="prod" size="80" value="--------"/><br/>
+<input type="text" disabled id="stat" size="80" value="Veuillez patienter..."/>
+<p style="text-align: right"><button id="xbtn">Quitter</button> | <button id="lbtn">En savoir plus</button></p>
+
+<script>
+/*
+En préambule je dirais que ce code n'est pas parfait et il reste à régler la gestion de certaines erreurs et certaines
+situations non prises en charge par ce code. Aucune base de données n'est livré avec ce code bien qu'il en génère une
+après traitement. Aucune garantie et aucun copyright n'y sont associés. ;-)
+Ceci étant dit il reste à vous de me suggérer les améliorations par ici:
+https://github.com/dr-benltaief/getbase/issues
+*/
+
+// Notre document HTML a été chargé.. on commence!
+(function(){
+
+	// On crée notre base de données
+	var db = openDatabase('medbase', '1.0', 'Référence médicaments en Tunisie', 5 * 1024 * 1024),
+
+	// Notre compteur de fiches
+	count = 1,
+
+	// Notre compteur d'erreurs
+	err = 0,
+
+	// Un fix pour le bug pending de webkit
+	pending = false,
+
+	// Les intervalles d'attente
+	interVal1 = interVal2 = null,
+
+	// Le nombre de tentatives
+	attempts = 0,
+
+	// Le nombre d'entrées (médicaments) dans la base de données
+	medocs = 0;
+
+	// On supprime la table medocs si elle existe et on la recrée avec les champs nécessaires
+	db.transaction(function (tx) {
+		tx.executeSql('DROP TABLE IF EXISTS medocs')
+		tx.executeSql('CREATE TABLE IF NOT EXISTS medocs (id unique, specialite text, dosage text, forme text, presentation text, conditionnement text, specification text, dci text, classe text, sousclasse text, laboratoire text, tableau text, conservation text, indication text, amm text, dateamm text)');
+	});
+
+	// Notre fonction boucle
+	function getData() {
+
+		// On va télécharger les fiches en Ajax.. Sous les navigateurs autres que celui qu'on utilisera
+		// on aurait une alerte de sécurité XSS puisqu'on devrait avoir le même domaine, le même protocole
+		// et le même port pour faire des appels de ce genre..
+		var xhr = new XMLHttpRequest();
+
+		// La fiche a été chargé.. on la traite pour en soustraire les données..
+		xhr.onreadystatechange = function() {
+			if (interVal1 != null) clearTimeout(interVal1);
+			if (interVal2 != null) clearTimeout(interVal2);
+			interVal1 = interVal2 = null;
+			if (xhr.readyState == 4) {
+				pending = false;
+				attempts = 0;
+				if ( xhr.status == 200 ) {
+					// Nos données qu'on va entrer depuis la fiche
+					var a = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]],
+					data = xhr.responseText;
+					// RegEx.. What else?!
+					a[0] = count;
+					a[1] = data.match(/Spécialité\s:[\s\S]*?Size="4">(.*?)<\/font>/i);
+					a[2] = data.match(/Dosage\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[3] = data.match(/Forme\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[4] = data.match(/Présentation\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[5] = data.match(/Conditionnement\sprimaire\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[6] = data.match(/Spécification\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[7] = data.match(/DCI\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[8] = data.match(/Classe\sThérapeutique\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[9] = data.match(/Sous\sClasse\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[10] = data.match(/Laboratoire\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[11] = data.match(/Tableau[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[12] = data.match(/Durée\sde\sconservation\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[13] = data.match(/Indication\s:[\s\S]*?color="#006699"\sSize="2">((.|\n|\r|^$)*?)<\/font>/im);
+					a[14] = data.match(/AMM\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+					a[15] = data.match(/Date\sAMM\s:[\s\S]*?Size="2">(.*?)<\/font>/i);
+
+					document.getElementById("num").value = "Traitement de "+count+" fiches";
+
+					// On vérifie si notre RegEx pour détecter la Spécialité a fonctionné..
+					if (a[1] !== null) {
+
+						// Certaines entrées contiennent un espace codé en HTML ou sont nulles; on traite..
+						for (i=2;i<16;i++) {
+							if (a[i] !== null) { a[i][1] = a[i][1].replace('&nbsp;',' ') } else { a[i] = ['','']; }
+						};
+						// On insère nos entrées dans notre base de données créée plus base..
+						db.transaction(function (tx) {
+							tx.executeSql('INSERT INTO medocs (id, specialite, dosage, forme, presentation, conditionnement, specification, dci, classe, sousclasse, laboratoire, tableau, conservation, indication, amm, dateamm) VALUES ('+a[0]+', "'+a[1][1]+'", "'+a[2][1]+'", "'+a[3][1]+'", "'+a[4][1]+'", "'+a[5][1]+'", "'+a[6][1]+'", "'+a[7][1]+'", "'+a[8][1]+'", "'+a[9][1]+'", "'+a[10][1]+'", "'+a[11][1]+'", "'+a[12][1]+'", "'+a[13][1]+'", "'+a[14][1]+'", "'+a[15][1]+'")');
+						});
+
+						// Un peu d'affichage
+						medocs++;
+						document.getElementById("prod").value = a[1][1];
+						document.getElementById("stat").value = "Veuillez patienter... Nombre d'entrées dans la base: "+medocs+" médicaments";
+
+						// On remet à zéro notre compteur d'erreurs..
+						err = 0;
+
+					} else {
+
+						// .. sinon on incrémente le nombre d'érreurs
+						err++;
+
+					}
+					// Le nombre maximal d'erreurs est 100; il se pourrait qu'il n'y ait plus de fiches..
+					// Petite note: ce chiffre a été choisi arbitrairement; il se pourrait que je me suis trompé.. :-P
+					if (err>100) {
+						if (typeof doSome === 'object' && doSome !== null) {
+							document.getElementById("prod").value = "Nombre de médicaments dans la base finale: "+medocs+" Chemin vers la base:";
+
+							// on utilise la méthode getDataPath() de notre objet Qt Bridge doSome pour afficher
+							// l'adresse de notre base de données sur le disque
+							document.getElementById("stat").value = doSome.getDataPath();
+						}
+					} else {
+						count++;
+						getData();
+					}
+				}/* else {
+					document.getElementById("stat").value = "Erreur: " + xhr.status;
+				}*/
+			}
+			// On incrémente notre compteur de fiches
+		}
+
+		/*xhr.onerror = function () {
+			pending = false;
+			clearTimeout(interVal);
+			document.getElementById("stat").value = "Erreur: " + xhr.status;
+		}*/
+
+		xhr.open('GET', 'http://www.dpm.tn/Francais/aspmed/fiche.asp?cod_medic='+count, true);
+		xhr.send(null);
+		pending = true;
+
+		// Une deuxième requête (de secours) est lancé après 5 secondes si le serveur ne répond pas
+		// (c'est principalement en rapport avec un "bug" webkit (si c'est pas un problème de connexion):
+		// quand le serveur ne renvoit rien - bien que la connexion ait eu lieu - webkit attendra indéfinitivement
+		// la réponse du serveur donc on refait une deuxième requête après 5 secondes (10 secondes en tout).. Ici
+		// j'ai limité les tentatives à 5..)
+
+		function retry() {
+			attempts++;
+			if (attempts>5) {
+				document.getElementById("stat").value = "Erreur: échec de connexion au serveur malgrès 5 tentatives.";
+			} else {
+				interVal2 = setTimeout(function(){
+					getData()
+				}, 5000);
+			}
+		}
+
+		// Au début on annule la requête puis on attend 5 autres secondes avant de réessayer
+
+		interVal1 = setTimeout(function(){
+			if (pending){
+				xhr.abort();
+				pending = false;
+			}
+			retry();
+		}, 5000);
+	}
+
+	window.onload = getData();
+
+	// Cette fonction utilise la méthode getLink() de notre objet Qt Bridge doSome pour ouvrir le lien vers l'article
+	// sur mon blog sur le navigateur par défaut du système d'exploitation
+	document.getElementById("lbtn").onclick = function() {
+		if (typeof doSome === 'object' && doSome !== null) {
+			doSome.getLink();
+		} else {
+			window.open("http://dr-benltaief.blogspot.com/2015/02/dpm-base-sqlite-javascript-qtwebkit.html#up");
+		}
+	}
+
+	// Cette fonction utilise la méthode closeApp() de notre objet Qt Bridge doSome pour fermer l'application
+	document.getElementById("xbtn").onclick = function() {
+		if (typeof doSome === 'object' && doSome !== null) {
+			doSome.closeApp();
+		}
+	}
+})();
+</script>
+</body>
+</html>
