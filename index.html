@@ -23,8 +23,8 @@ https://github.com/dr-benltaief/getbase/issues
 // Notre document HTML a été chargé.. on commence!
 (function(){
 
-	// On crée notre base de données
-	var db = openDatabase('medbase', '1.0', 'Référence médicaments en Tunisie', 5 * 1024 * 1024),
+	// On crée notre base de données avec une taille maximale de 20Mo.
+	var db = openDatabase('medbase', '1.0', 'Référence médicaments en Tunisie', 20 * 1024 * 1024),
 
 	// Notre compteur de fiches
 	count = 1,
@@ -58,7 +58,7 @@ https://github.com/dr-benltaief/getbase/issues
 		// et le même port pour faire des appels de ce genre..
 		var xhr = new XMLHttpRequest();
 
-		// La fiche a été chargé.. on la traite pour en soustraire les données..
+		// La fiche a été chargée.. on la traite pour en soustraire les données..
 		xhr.onreadystatechange = function() {
 			if (interVal1 != null) clearTimeout(interVal1);
 			if (interVal2 != null) clearTimeout(interVal2);
@@ -117,7 +117,7 @@ https://github.com/dr-benltaief/getbase/issues
 
 					}
 					// Le nombre maximal d'erreurs est 100; il se pourrait qu'il n'y ait plus de fiches..
-					// Petite note: ce chiffre a été choisi arbitrairement; il se pourrait que je me suis trompé.. :-P
+					// Petite note: ce chiffre a été choisi arbitrairement; il se pourrait que je me sois trompé.. :-P
 					if (err>100) {
 						if (typeof doSome === 'object' && doSome !== null) {
 							document.getElementById("prod").value = "Nombre de médicaments dans la base finale: "+medocs+" Chemin vers la base:";
@@ -127,6 +127,7 @@ https://github.com/dr-benltaief/getbase/issues
 							document.getElementById("stat").value = doSome.getDataPath();
 						}
 					} else {
+						// On incrémente notre compteur de fiches et ça recommence..
 						count++;
 						getData();
 					}
@@ -134,7 +135,6 @@ https://github.com/dr-benltaief/getbase/issues
 					document.getElementById("stat").value = "Erreur: " + xhr.status;
 				}*/
 			}
-			// On incrémente notre compteur de fiches
 		}
 
 		/*xhr.onerror = function () {

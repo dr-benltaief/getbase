@@ -65,6 +65,8 @@ int main(int argc, char **argv)
 	// Besoin d'une base de données SQLite et de son adresse sur le disque.
 	QWebSettings::globalSettings()->setAttribute(QWebSettings::OfflineStorageDatabaseEnabled, true);
 	QWebSettings::globalSettings()->setOfflineStoragePath(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)+"/data/getbase/getbase");
+	// La taille maximale de notre base de données (ici 20Mo de requis)
+	QWebSettings::setOfflineStorageDefaultQuota(20*1024*1024);
 
 	// Besoin de déboguer?!
 	// QWebSettings::globalSettings()->setAttribute(QWebSettings::DeveloperExtrasEnabled, true);
