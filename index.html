@@ -47,7 +47,7 @@ https://github.com/dr-benltaief/getbase/issues
 	// On supprime la table medocs si elle existe et on la recrée avec les champs nécessaires
 	db.transaction(function (tx) {
 		tx.executeSql('DROP TABLE IF EXISTS medocs')
-		tx.executeSql('CREATE TABLE IF NOT EXISTS medocs (id unique, specialite text, dosage text, forme text, presentation text, conditionnement text, specification text, dci text, classe text, sousclasse text, laboratoire text, tableau text, conservation text, indication text, amm text, dateamm text)');
+		tx.executeSql('CREATE TABLE IF NOT EXISTS medocs (_id INTEGER PRIMARY KEY, id unique, specialite text, dosage text, forme text, presentation text, conditionnement text, specification text, dci text, classe text, sousclasse text, laboratoire text, tableau text, conservation text, indication text, amm text, dateamm text)');
 	});
 
 	// Notre fonction boucle
